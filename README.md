@@ -1,2 +1,2 @@
-#Fake News Detector#
+# Fake News Detector
 Using machine learning.
