@@ -1,2 +1,2 @@
-# GroupOneCIS487TBD
-Name tbd
+#Fake News Detector#
+Using machine learning.
