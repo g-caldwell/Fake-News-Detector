@@ -123,27 +123,13 @@ detectButton = QPushButton("detect")
 resizeButton(detectButton)
 detectButton.clicked.connect(clearText)
 
-#model dropdown
-modelType = QComboBox()
-modelType.addItem("Linear Regression")
-modelType.addItem("Placeholder")
-modelType.addItem("Placeholder")
-
-#graph type selector
-graphType = QComboBox()
-graphType.addItem("Bar Chart")
-graphType.addItem("Placeholder")
-graphType.addItem("Placeholder")
-
 # add widgets to layout
-layout.addWidget(graphType, 0, 2, 1, 2,  alignment=Qt.AlignmentFlag.AlignCenter)
-layout.addWidget(modelType, 0,0, 1, 2, alignment=Qt.AlignmentFlag.AlignCenter)
-layout.addWidget(pieChartCanvas, 1, 0, 1, 2, alignment=Qt.AlignmentFlag.AlignCenter)
-layout.addWidget(barGraphCanvas, 1, 2, 1, 2, alignment=Qt.AlignmentFlag.AlignCenter)
-layout.addWidget(pasteTextBox, 3, 0, 2, 4, alignment=Qt.AlignmentFlag.AlignVCenter)
-layout.addWidget(importReportButton, 5, 0, alignment=Qt.AlignmentFlag.AlignLeft)
-layout.addWidget(uploadCSVButton, 5, 0, alignment=Qt.AlignmentFlag.AlignCenter)
-layout.addWidget(detectButton, 5, 3, alignment=Qt.AlignmentFlag.AlignRight)
+layout.addWidget(pieChartCanvas, 0, 0, 1, 2, alignment=Qt.AlignmentFlag.AlignCenter)
+layout.addWidget(barGraphCanvas, 0, 2, 1, 2, alignment=Qt.AlignmentFlag.AlignCenter)
+layout.addWidget(pasteTextBox, 2, 0, 2, 4, alignment=Qt.AlignmentFlag.AlignVCenter)
+layout.addWidget(importReportButton, 4, 0, alignment=Qt.AlignmentFlag.AlignLeft)
+layout.addWidget(uploadCSVButton, 4, 0, alignment=Qt.AlignmentFlag.AlignCenter)
+layout.addWidget(detectButton, 4, 3, alignment=Qt.AlignmentFlag.AlignRight)
 
 # adds layout to window, locks window size, and displays window
 window.setLayout(layout)
