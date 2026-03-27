@@ -62,9 +62,3 @@ model.fit(x_train, y_train)
 # testing the model
 print(accuracy_score(y_train, model.predict(x_train)))
 print(accuracy_score(y_test, model.predict(x_test)))
-
-#exe file
-#two different data sets
-#22k data set
-#data set format
-#about/info showcase button
