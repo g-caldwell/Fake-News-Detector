@@ -20,12 +20,10 @@ dataset = os.path.join(dataset_path, "dataset.csv")
 # Load CSV
 data = pd.read_csv(dataset,index_col=0)
 data.head()
-#data = data.drop(["title", "subject","date"], axis = 1)
 
 # Shuffle data
 data = data.sample(frac=1)
 data.reset_index(inplace=True)
-#data.drop(["index"], axis=1, inplace=True)
 
 def preprocess_text(text_data):
     preprocessed_text = []
