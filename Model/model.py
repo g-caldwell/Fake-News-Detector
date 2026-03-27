@@ -1,5 +1,5 @@
+import os
 import pandas as pd
-import tqdm
 import re
 import nltk
 nltk.download('punkt')
@@ -12,14 +12,20 @@ from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.linear_model import LogisticRegression
 from sklearn.tree import DecisionTreeClassifier
 
-data = pd.read_csv('Rework\\News.csv',index_col=0)
-data.head()
-data = data.drop(["title", "subject","date"], axis = 1)
+# File path
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+dataset_path = os.path.join(BASE_DIR, 'Cleaned CSVs')
+dataset = os.path.join(dataset_path, "dataset.csv")
 
-# Shuffling
+# Load CSV
+data = pd.read_csv(dataset,index_col=0)
+data.head()
+#data = data.drop(["title", "subject","date"], axis = 1)
+
+# Shuffle data
 data = data.sample(frac=1)
 data.reset_index(inplace=True)
-data.drop(["index"], axis=1, inplace=True)
+#data.drop(["index"], axis=1, inplace=True)
 
 def preprocess_text(text_data):
     preprocessed_text = []
@@ -46,15 +52,21 @@ def get_top_n_words(corpus, n=None):
 
 x_train, x_test, y_train, y_test = train_test_split(data['text'], 
                                                     data['class'], 
-                                                    test_size=0.25)
+                                                    test_size=0.5)
 
 vectorization = TfidfVectorizer()
 x_train = vectorization.fit_transform(x_train)
 x_test = vectorization.transform(x_test)
 
-model = DecisionTreeClassifier()
+model = DecisionTreeClassifier(max_depth=5, min_samples_leaf=15)
 model.fit(x_train, y_train)
 
 # testing the model
 print(accuracy_score(y_train, model.predict(x_train)))
 print(accuracy_score(y_test, model.predict(x_test)))
+
+#exe file
+#two different data sets
+#22k data set
+#data set format
+#about/info showcase button
