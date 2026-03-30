@@ -2,6 +2,7 @@ import os
 import sys
 import random
 import csv
+import re
 from collections import Counter
 
 from PyQt6.QtWidgets import (
@@ -15,10 +16,15 @@ from PyQt6.QtCore import Qt, QTimer
 from matplotlib.backends.backend_qtagg import FigureCanvasQTAgg
 from matplotlib.figure import Figure
 
-
 # ---------- CONFIG ----------
 os.environ["QT_API"] = "PyQt6"
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+
+# Add parent directory to sys.path for importing Model
+sys.path.append(os.path.dirname(BASE_DIR))
+from Model.clean import clean
+from Model.model import load_model_and_vectorizer, preprocess_text, get_important_keywords
+
 ICON_PATH = os.path.join(BASE_DIR, "FakeNewsIcon.png")
 SPINNER_PATH = os.path.join(BASE_DIR, "preview.gif")
 
@@ -41,23 +47,38 @@ LIGHT_COLORS = {
 }
 
 
-# ---------- FAKE MODEL ----------
-def fake_predict(text: str):
+# Model prediction helper
+def real_predict(text: str, model, vectorizer, important_keywords):
     if not text.strip():
-        return "Unknown", (0.0, 0.0), Counter()
+        return "Unknown", (0.0, 0.0), []
 
-    fake_keywords = ["conspiracy", "hoax", "clickbait", "shocking", "exposed"]
-    score = sum(text.lower().count(k) for k in fake_keywords) + random.random()
+    # 1. Clean
+    cleaned_text = clean(text)
+    
+    # 2. Preprocess
+    preprocessed = preprocess_text([cleaned_text])
+    
+    # 3. Vectorize
+    vec = vectorizer.transform(preprocessed)
+    
+    # 4. Predict
+    probs = model.predict_proba(vec)[0]
+    classes = model.classes_
+    class_map = {c: i for i, c in enumerate(classes)}
+    
+    # Assuming 0 is Fake, 1 is Real
+    fake_prob = probs[class_map.get(0, 0)]
+    real_prob = probs[class_map.get(1, 1)]
+    
+    label = "Real" if real_prob > fake_prob else "Fake"
 
-    fake_prob = min(0.95, 0.3 + score * 0.1)
-    real_prob = 1.0 - fake_prob
-    label = "Fake" if fake_prob >= 0.5 else "Real"
+    # Find important keywords present in the text
+    words_in_text = [w.lower() for w in re.sub(r'[^\w\s]', '', text).split()]
+    word_counts = Counter(words_in_text)
+    matches = [(w, word_counts[w]) for w in important_keywords if w in word_counts]
+    matches.sort(key=lambda x: x[1], reverse=True)
 
-    words = [w.strip(".,!?;:()[]\"'").lower() for w in text.split()]
-    words = [w for w in words if len(w) > 3]
-    word_counts = Counter(words).most_common(5)
-
-    return label, (real_prob, fake_prob), word_counts
+    return label, (real_prob, fake_prob), matches[:10]
 
 
 # ---------- SUMMARY GENERATOR ----------
@@ -149,6 +170,19 @@ class FakeNewsDashboard(QMainWindow):
         self.build_details_tab()
 
         self.apply_theme()
+
+        # Load Model
+        self.status_label.setText("Loading model...")
+        QTimer.singleShot(100, self.load_model_async)
+
+    def load_model_async(self):
+        try:
+            self.model, self.vectorizer = load_model_and_vectorizer()
+            self.important_keywords = get_important_keywords(self.model, self.vectorizer)
+            self.status_label.setText("Ready")
+        except Exception as e:
+            self.status_label.setText(f"Error loading model: {e}")
+            self.model, self.vectorizer = None, None
 
     # ---------- SIDEBAR ----------
     def build_sidebar(self):
@@ -401,12 +435,18 @@ class FakeNewsDashboard(QMainWindow):
         if not text.strip():
             self.status_label.setText("Please enter text first.")
             return
+        
+        if not hasattr(self, 'model') or self.model is None:
+            self.status_label.setText("Model not loaded yet.")
+            return
 
         self.show_spinner(True)
-        QTimer.singleShot(900, lambda: self.finish_detection(text))
+        QTimer.singleShot(100, lambda: self.finish_detection(text))
 
     def finish_detection(self, text):
-        label, (real_prob, fake_prob), word_counts = fake_predict(text)
+        label, (real_prob, fake_prob), word_counts = real_predict(
+            text, self.model, self.vectorizer, self.important_keywords
+        )
 
         # update pie chart
         self.update_pie_chart(real_prob, fake_prob)
@@ -470,7 +510,7 @@ class FakeNewsDashboard(QMainWindow):
                         return
                     for row in reader:
                         t = row["text"]
-                        label, _, _ = fake_predict(t)
+                        label, _, _ = real_predict(t, self.model, self.vectorizer, self.important_keywords)
                         total += 1
                         if label == "Real":
                             real_count += 1
