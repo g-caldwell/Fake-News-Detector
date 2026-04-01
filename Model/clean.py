@@ -24,7 +24,8 @@ def clean(text):
     filteredWords = [
         'said', 'told', 'reported', 'spokesman', 'according', 
         'image', 'images', 'via', 'featured', 'video', 'watch', 'read',
-        'reuters', 'facebook', 'twitter', 'getty', 'photo', 'by', 'screen capture', 'screencapture'
+        'reuters', 'facebook', 'twitter', 'getty', 'photo', 'by', 
+        'screenshot', 'screen capture', 'screencapture'
     ]
     pattern = re.compile(r'\b(' + '|'.join(filteredWords) + r')\b')
     text = pattern.sub('', text)
@@ -39,4 +40,4 @@ if __name__ == "__main__":
     df = pd.read_csv(input_path)
     df['text'] = df['text'].apply(clean)
     df.to_csv(output_path, index=False)
-    print(f"Success! Run your model on '{output_path}' to see the realistic accuracy.")
+    print(f"CSV saved to Cleaned CSVs/{output_path}")

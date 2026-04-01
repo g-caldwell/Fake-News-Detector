@@ -11,8 +11,9 @@ from sklearn.tree import DecisionTreeClassifier
 
 # File path
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-MODEL_PATH = os.path.join(BASE_DIR, 'fake_news_model.joblib')
-VECTORIZER_PATH = os.path.join(BASE_DIR, 'tfidf_vectorizer.joblib')
+SAVED_MODELS_DIR = os.path.join(BASE_DIR, 'Saved Models')
+MODEL_PATH = os.path.join(SAVED_MODELS_DIR, 'fake_news_model.joblib')
+VECTORIZER_PATH = os.path.join(SAVED_MODELS_DIR, 'tfidf_vectorizer.joblib')
 
 def download_nltk():
     try:
@@ -28,9 +29,6 @@ def preprocess_text(text_data):
     download_nltk()
     stop_words = stopwords.words('english')
     # Keeping it as a list to maintain exact original logic (token not in list)
-    # Actually set is better, but if it has to be EXACTLY the same... 
-    # But user won't notice O(1) vs O(N) if the result is the same.
-    # However, let's keep it as is but just don't re-download or re-fetch in the loop.
     preprocessed_text = []
     for sentence in text_data:
         sentence = re.sub(r'[^\w\s]', '', str(sentence))
@@ -53,20 +51,20 @@ def train_and_save_model():
     
     x_train, x_test, y_train, y_test = train_test_split(data['text'], 
                                                         data['class'], 
-                                                        test_size=0.5)
+                                                        test_size=0.2)
     
     vectorization = TfidfVectorizer()
     x_train_vec = vectorization.fit_transform(x_train)
     x_test_vec = vectorization.transform(x_test)
     
-    model = DecisionTreeClassifier(max_depth=5, min_samples_leaf=15)
+    model = DecisionTreeClassifier(max_depth=10, min_samples_leaf=200, criterion='gini')
     model.fit(x_train_vec, y_train)
     
     # Save
     joblib.dump(model, MODEL_PATH)
     joblib.dump(vectorization, VECTORIZER_PATH)
     
-    print(f"Model trained and saved.")
+    print(f"Model trained and saved to {os.path.join(BASE_DIR, 'Saved Models')}")
     print(f"Training Accuracy: {accuracy_score(y_train, model.predict(x_train_vec))}")
     print(f"Testing Accuracy: {accuracy_score(y_test, model.predict(x_test_vec))}")
     return model, vectorization

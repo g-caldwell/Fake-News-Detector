@@ -25,8 +25,9 @@ sys.path.append(os.path.dirname(BASE_DIR))
 from Model.clean import clean
 from Model.model import load_model_and_vectorizer, preprocess_text, get_important_keywords
 
-ICON_PATH = os.path.join(BASE_DIR, "FakeNewsIcon.png")
-SPINNER_PATH = os.path.join(BASE_DIR, "preview.gif")
+ASSETS_DIR = os.path.join(BASE_DIR, 'Assets')
+ICON_PATH = os.path.join(BASE_DIR, 'FakeNewsIcon.png')
+SPINNER_PATH = os.path.join(BASE_DIR, 'preview.gif')
 
 
 # ---------- THEMES ----------
