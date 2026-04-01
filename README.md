@@ -8,3 +8,17 @@
 [![Qt](https://img.shields.io/badge/Qt-2CDE85?logo=Qt&logoColor=fff)](#)
 
 **Detecting real and fake news with machine learning**
+
+## Our Team
+
+- [Carter Wilson](https://github.com/thanksyoungc)
+- [Peyton Hollis](https://github.com/phollis11)
+- [Gabriel Caldwell](https://www.github.com/g-caldwell)
+- [Tyler Wills](https://github.com/tylerwills27)
+
+## Features
+
+- Light/Dark mode toggle
+- News Summary Section
+- File Upload
+- Persistant Trained Models
