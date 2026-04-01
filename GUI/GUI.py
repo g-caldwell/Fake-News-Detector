@@ -162,12 +162,15 @@ class FakeNewsDashboard(QMainWindow):
 
         self.dashboard_tab = QWidget()
         self.details_tab = QWidget()
+        self.about_tab = QWidget()
 
         self.tabs.addTab(self.dashboard_tab, "Dashboard")
         self.tabs.addTab(self.details_tab, "Details")
+        self.tabs.addTab(self.about_tab, "About")
 
         self.build_dashboard_tab()
         self.build_details_tab()
+        self.build_about_tab()
 
         self.apply_theme()
 
@@ -203,6 +206,10 @@ class FakeNewsDashboard(QMainWindow):
         btn_details = QPushButton("Details")
         btn_details.clicked.connect(lambda: self.tabs.setCurrentIndex(1))
         layout.addWidget(btn_details)
+
+        btn_about = QPushButton("About")
+        btn_about.clicked.connect(lambda: self.tabs.setCurrentIndex(2))
+        layout.addWidget(btn_about)
 
         layout.addSpacing(20)
 
@@ -315,6 +322,57 @@ class FakeNewsDashboard(QMainWindow):
         self.explanation_box = QTextEdit()
         self.explanation_box.setReadOnly(True)
         layout.addWidget(self.explanation_box)
+
+        layout.addStretch()
+
+    # ---------- ABOUT TAB ----------
+    def build_about_tab(self):
+        layout = QVBoxLayout(self.about_tab)
+        layout.setContentsMargins(30, 30, 30, 30)
+
+        header = QLabel("About This Project")
+        header.setStyleSheet("font-size: 24px; font-weight: 700;")
+        layout.addWidget(header)
+
+        layout.addSpacing(10)
+
+        description = QLabel(
+            "This Fake News Detector is a machine learning-based application designed to classify "
+            "news articles as either Real or Fake. By analyzing patterns in text, assessing readability, "
+            "and evaluating sentiment, our tool provides valuable insights to help users identify potentially "
+            "misleading or sensational content online."
+        )
+        description.setWordWrap(True)
+        description.setStyleSheet("font-size: 16px;")
+        layout.addWidget(description)
+
+        layout.addSpacing(20)
+
+        team_header = QLabel("Project Team:")
+        team_header.setStyleSheet("font-size: 18px; font-weight: 700;")
+        layout.addWidget(team_header)
+
+        layout.addSpacing(5)
+
+        team = QLabel("• Carter Wilson\n• Tyler Wills\n• Gabriel Caldwell\n• Peyton Hollis")
+        team.setStyleSheet("font-size: 16px;")
+        layout.addWidget(team)
+
+        layout.addSpacing(20)
+
+        source_header = QLabel("Source / Inspiration:")
+        source_header.setStyleSheet("font-size: 18px; font-weight: 700;")
+        layout.addWidget(source_header)
+
+        layout.addSpacing(5)
+
+        source_link = QLabel(
+            "Source: <a href='https://www.geeksforgeeks.org/machine-learning/fake-news-detection-using-machine-learning/'>"
+            "https://www.geeksforgeeks.org/machine-learning/fake-news-detection-using-machine-learning/</a>"
+        )
+        source_link.setOpenExternalLinks(True)
+        source_link.setStyleSheet("font-size: 16px;")
+        layout.addWidget(source_link)
 
         layout.addStretch()
 
