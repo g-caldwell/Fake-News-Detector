@@ -4,7 +4,8 @@ import os
 
 # File paths
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-input_path = os.path.join(BASE_DIR, 'News.csv')
+input_dir = os.path.join(BASE_DIR, 'Raw Datasets')
+input_path = os.path.join(input_dir, 'News.csv')
 output_dir = os.path.join(BASE_DIR, 'Cleaned CSVs')
 output_path = os.path.join(output_dir, 'dataset.csv')
 
@@ -40,4 +41,4 @@ if __name__ == "__main__":
     df = pd.read_csv(input_path)
     df['text'] = df['text'].apply(clean)
     df.to_csv(output_path, index=False)
-    print(f"CSV saved to Cleaned CSVs/{output_path}")
+    print(f"CSV saved to: {output_path}")
