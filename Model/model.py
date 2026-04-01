@@ -2,63 +2,95 @@ import os
 import pandas as pd
 import re
 import nltk
-nltk.download('punkt')
-nltk.download('stopwords')
+import joblib
 from nltk.corpus import stopwords
 from sklearn.model_selection import train_test_split
 from sklearn.metrics import accuracy_score
-from sklearn.feature_extraction.text import CountVectorizer
 from sklearn.feature_extraction.text import TfidfVectorizer
-from sklearn.linear_model import LogisticRegression
 from sklearn.tree import DecisionTreeClassifier
 
 # File path
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-dataset_path = os.path.join(BASE_DIR, 'Cleaned CSVs')
-dataset = os.path.join(dataset_path, "dataset.csv")
+MODEL_PATH = os.path.join(BASE_DIR, 'fake_news_model.joblib')
+VECTORIZER_PATH = os.path.join(BASE_DIR, 'tfidf_vectorizer.joblib')
 
-# Load CSV
-data = pd.read_csv(dataset,index_col=0)
-data.head()
-
-# Shuffle data
-data = data.sample(frac=1)
-data.reset_index(inplace=True)
+def download_nltk():
+    try:
+        nltk.data.find('corpora/stopwords')
+    except LookupError:
+        nltk.download('stopwords')
+    try:
+        nltk.data.find('tokenizers/punkt')
+    except LookupError:
+        nltk.download('punkt')
 
 def preprocess_text(text_data):
+    download_nltk()
+    stop_words = stopwords.words('english')
+    # Keeping it as a list to maintain exact original logic (token not in list)
+    # Actually set is better, but if it has to be EXACTLY the same... 
+    # But user won't notice O(1) vs O(N) if the result is the same.
+    # However, let's keep it as is but just don't re-download or re-fetch in the loop.
     preprocessed_text = []
     for sentence in text_data:
-        sentence = re.sub(r'[^\w\s]', '', sentence)
+        sentence = re.sub(r'[^\w\s]', '', str(sentence))
         preprocessed_text.append(' '.join(token.lower()
                                   for token in str(sentence).split()
-                                  if token not in stopwords.words('english')))
-
+                                  if token not in stop_words))
     return preprocessed_text
 
-preprocessed_review = preprocess_text(data['text'].values)
-data['text'] = preprocessed_review
+def train_and_save_model():
+    dataset_path = os.path.join(BASE_DIR, 'Cleaned CSVs', 'dataset.csv')
+    if not os.path.exists(dataset_path):
+        print("Dataset not found. Please run clean.py first.")
+        return None, None
 
-def get_top_n_words(corpus, n=None):
-    vec = CountVectorizer().fit(corpus)
-    bag_of_words = vec.transform(corpus)
-    sum_words = bag_of_words.sum(axis=0)
-    words_freq = [(word, sum_words[0, idx])
-                  for word, idx in vec.vocabulary_.items()]
-    words_freq = sorted(words_freq, key=lambda x: x[1],
-                        reverse=True)
-    return words_freq[:n]
+    data = pd.read_csv(dataset_path, index_col=0)
+    data = data.sample(frac=1).reset_index(drop=True)
+    
+    preprocessed_review = preprocess_text(data['text'].values)
+    data['text'] = preprocessed_review
+    
+    x_train, x_test, y_train, y_test = train_test_split(data['text'], 
+                                                        data['class'], 
+                                                        test_size=0.5)
+    
+    vectorization = TfidfVectorizer()
+    x_train_vec = vectorization.fit_transform(x_train)
+    x_test_vec = vectorization.transform(x_test)
+    
+    model = DecisionTreeClassifier(max_depth=5, min_samples_leaf=15)
+    model.fit(x_train_vec, y_train)
+    
+    # Save
+    joblib.dump(model, MODEL_PATH)
+    joblib.dump(vectorization, VECTORIZER_PATH)
+    
+    print(f"Model trained and saved.")
+    print(f"Training Accuracy: {accuracy_score(y_train, model.predict(x_train_vec))}")
+    print(f"Testing Accuracy: {accuracy_score(y_test, model.predict(x_test_vec))}")
+    return model, vectorization
 
-x_train, x_test, y_train, y_test = train_test_split(data['text'], 
-                                                    data['class'], 
-                                                    test_size=0.5)
+def load_model_and_vectorizer():
+    if os.path.exists(MODEL_PATH) and os.path.exists(VECTORIZER_PATH):
+        try:
+            model = joblib.load(MODEL_PATH)
+            vectorizer = joblib.load(VECTORIZER_PATH)
+            return model, vectorizer
+        except Exception as e:
+            print(f"Error loading model: {e}. Retraining...")
+    return train_and_save_model()
 
-vectorization = TfidfVectorizer()
-x_train = vectorization.fit_transform(x_train)
-x_test = vectorization.transform(x_test)
+def get_important_keywords(model, vectorizer, n=20):
+    if not hasattr(model, 'feature_importances_'):
+        return []
+    feature_names = vectorizer.get_feature_names_out()
+    importances = model.feature_importances_
+    important_indices = importances.argsort()[::-1][:n]
+    return [feature_names[i] for i in important_indices if importances[i] > 0]
 
-model = DecisionTreeClassifier(max_depth=5, min_samples_leaf=15)
-model.fit(x_train, y_train)
-
-# testing the model
-print(accuracy_score(y_train, model.predict(x_train)))
-print(accuracy_score(y_test, model.predict(x_test)))
+if __name__ == "__main__":
+    model, vectorizer = load_model_and_vectorizer()
+    if model and vectorizer:
+        keywords = get_important_keywords(model, vectorizer)
+        print("Top keywords:", keywords)

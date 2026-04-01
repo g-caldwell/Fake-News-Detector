@@ -7,7 +7,7 @@ BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 input_path = os.path.join(BASE_DIR, 'News.csv')
 output_dir = os.path.join(BASE_DIR, 'Cleaned CSVs')
 output_path = os.path.join(output_dir, 'dataset.csv')
-df = pd.read_csv(input_path)
+
 
 def clean(text):
     text = str(text).lower()
@@ -35,7 +35,8 @@ def clean(text):
     
     return text
 
-df['text'] = df['text'].apply(clean)
-df.to_csv(output_path, index=False)
-
-print(f"Success! Run your model on '{output_path}' to see the realistic accuracy.")
+if __name__ == "__main__":
+    df = pd.read_csv(input_path)
+    df['text'] = df['text'].apply(clean)
+    df.to_csv(output_path, index=False)
+    print(f"Success! Run your model on '{output_path}' to see the realistic accuracy.")
