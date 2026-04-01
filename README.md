@@ -2,7 +2,7 @@
 
 **Using machine learning.**
 
-# [![My Skills](https://skillicons.dev/icons?i=python,)](https://skillicons.dev)
+# [![Python Libraries](https://skillicons.dev/icons?i=python,)](https://skillicons.dev)
 [![Scikit-learn](https://img.shields.io/badge/-scikit--learn-%23F7931E?logo=scikit-learn&logoColor=white)](#)
 [![NumPy](https://img.shields.io/badge/NumPy-4DABCF?logo=numpy&logoColor=fff)](#)
 [![Pandas](https://img.shields.io/badge/Pandas-150458?logo=pandas&logoColor=fff)](#)
