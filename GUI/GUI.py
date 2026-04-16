@@ -16,35 +16,57 @@ from PyQt6.QtCore import Qt, QTimer
 from matplotlib.backends.backend_qtagg import FigureCanvasQTAgg
 from matplotlib.figure import Figure
 
+def resource_path(relative_path):
+    """ Get absolute path to resource, works for dev and for PyInstaller """
+    try:
+        base_path = sys._MEIPASS
+    except Exception:
+        base_path = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
+    return os.path.normpath(os.path.join(base_path, relative_path))
+
 # ---------- CONFIG ----------
 os.environ["QT_API"] = "PyQt6"
-BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+# In bundled mode, BASE_DIR will be in _MEIPASS. In dev mode, it's the GUI folder.
+if hasattr(sys, '_MEIPASS'):
+    BASE_DIR = resource_path('GUI')
+else:
+    BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 
 # Add parent directory to sys.path for importing Model
 sys.path.append(os.path.dirname(BASE_DIR))
-from Model.clean import clean
+from Model.clean import clean, clean_csv
+import pandas as pd
+import tempfile
+
 from Model.model import load_model_and_vectorizer, preprocess_text, get_important_keywords
 
-ASSETS_DIR = os.path.join(BASE_DIR, 'Assets')
-ICON_PATH = os.path.join(BASE_DIR, 'FakeNewsIcon.png')
-SPINNER_PATH = os.path.join(BASE_DIR, 'preview.gif')
+# Update paths to use resource_path
+ASSETS_DIR = resource_path(os.path.join('GUI', 'Assets'))
+ICON_PATH = os.path.join(ASSETS_DIR, 'FakeNewsIcon.png')
+SPINNER_PATH = os.path.join(ASSETS_DIR, 'preview.gif')
+
+# Add bundled NLTK data path
+import nltk
+NLTK_DATA_PATH = resource_path('nltk_data')
+if os.path.exists(NLTK_DATA_PATH):
+    nltk.data.path.append(NLTK_DATA_PATH)
 
 
 # ---------- THEMES ----------
 DARK_COLORS = {
-    "bg": "#121212",
-    "text": "#FFFFFF",
-    "chart_bg": "#1E1E1E",
-    "pie_real": "#2ECC71",   # green = real
-    "pie_fake": "#E74C3C",   # red = fake
+    "bg": "#0A0A0B",         # Very deep dark for maximum contrast
+    "text": "#FAFAFA",       # Near-pure white for readability
+    "chart_bg": "#0A0A0B",   # Seamless with background
+    "pie_real": "#00E676",   # Vivid green
+    "pie_fake": "#FF5252",   # Vivid red
 }
 
 LIGHT_COLORS = {
-    "bg": "#FFFFFF",
-    "text": "#000000",
-    "chart_bg": "#FFFFFF",
-    "pie_real": "#27AE60",
-    "pie_fake": "#C0392B",
+    "bg": "#F5F6F7",         # Clean light grey/white
+    "text": "#1A1A1A",       # Dark grey/black
+    "chart_bg": "#F5F6F7",
+    "pie_real": "#2E7D32",   # Forest green
+    "pie_fake": "#D32F2F",   # Deep red
 }
 
 
@@ -286,6 +308,11 @@ class FakeNewsDashboard(QMainWindow):
         self.spinner_label.setVisible(False)
         layout.addWidget(self.spinner_label, 5, 0, 1, 4)
 
+        # CSV SUMMARY LABEL (Bottom Left)
+        self.csv_summary_label = QLabel("")
+        self.csv_summary_label.setStyleSheet("font-weight: bold; color: #2ECC71;")
+        layout.addWidget(self.csv_summary_label, 6, 0, 1, 2)
+
     # ---------- DETAILS TAB ----------
     def build_details_tab(self):
         layout = QVBoxLayout(self.details_tab)
@@ -377,7 +404,7 @@ class FakeNewsDashboard(QMainWindow):
 
         layout.addStretch()
 
-    # ---------- PIE CHART ----------
+    # ---------- PIE (DONUT) CHART ----------
     def create_pie_chart(self, real_prob, fake_prob):
         fig = Figure(facecolor=self.colors["chart_bg"])
         ax = fig.add_subplot(111)
@@ -386,20 +413,27 @@ class FakeNewsDashboard(QMainWindow):
         values = [real_prob, fake_prob]
         colors = [self.colors["pie_real"], self.colors["pie_fake"]]
 
-        ax.pie(
+        wedges, texts, autotexts = ax.pie(
             values,
             labels=labels,
             autopct="%1.1f%%",
             startangle=90,
             colors=colors,
-            pctdistance=0.7,
-            labeldistance=1.05,
-            textprops={"color": self.colors["text"], "fontsize": 12, "fontweight": "bold"},
-            wedgeprops={"linewidth": 1.5, "edgecolor": self.colors["bg"]},
+            pctdistance=0.75,
+            labeldistance=1.1,
+            textprops={"color": self.colors["text"], "fontsize": 14, "fontweight": "bold"},
+            wedgeprops={"linewidth": 2, "edgecolor": self.colors["bg"], "width": 0.4},  # Donut style
         )
 
-        ax.set_title("Prediction Confidence", color=self.colors["text"], fontsize=14, pad=10)
+        ax.set_title("Prediction Confidence", color=self.colors["text"], fontsize=15, fontweight='bold', pad=15)
 
+        # Enhance contrast for percentages
+        for autotext in autotexts:
+            autotext.set_color("white")
+            autotext.set_fontsize(13)
+            autotext.set_fontweight('bold')
+
+        fig.tight_layout()
         canvas = FigureCanvasQTAgg(fig)
         return canvas, ax, fig
 
@@ -412,23 +446,26 @@ class FakeNewsDashboard(QMainWindow):
 
         self.pie_fig.set_facecolor(self.colors["chart_bg"])
 
-        self.pie_ax.pie(
+        wedges, texts, autotexts = self.pie_ax.pie(
             values,
             labels=labels,
             autopct="%1.1f%%",
             startangle=90,
             colors=colors,
-            pctdistance=0.7,
-            labeldistance=1.05,
-            textprops={"color": self.colors["text"], "fontsize": 12, "fontweight": "bold"},
-            wedgeprops={"linewidth": 1.5, "edgecolor": self.colors["bg"]},
+            pctdistance=0.75,
+            labeldistance=1.1,
+            textprops={"color": self.colors["text"], "fontsize": 14, "fontweight": "bold"},
+            wedgeprops={"linewidth": 2, "edgecolor": self.colors["bg"], "width": 0.4},  # Donut style
         )
 
-        self.pie_ax.set_title("Prediction Confidence", color=self.colors["text"], fontsize=14, pad=10)
+        self.pie_ax.set_title("Prediction Confidence", color=self.colors["text"], fontsize=15, fontweight='bold', pad=15)
 
-        for text in self.pie_ax.texts:
-            text.set_color(self.colors["text"])
+        for autotext in autotexts:
+            autotext.set_color("white")
+            autotext.set_fontsize(13)
+            autotext.set_fontweight('bold')
 
+        self.pie_fig.tight_layout()
         self.pie_canvas.draw()
 
     # ---------- BAR CHART FOR TOP WORDS ----------
@@ -557,29 +594,100 @@ class FakeNewsDashboard(QMainWindow):
 
     def upload_csv(self):
         path, _ = QFileDialog.getOpenFileName(self, "Upload CSV", "", "CSV Files (*.csv)")
-        if path:
+        if not path:
+            return
+
+        self.status_label.setText("Processing CSV...")
+        self.show_spinner(True)
+        
+        # Run in a separate shot to avoid UI freeze
+        QTimer.singleShot(100, lambda: self.process_csv_batch(path))
+
+    def process_csv_batch(self, path):
+        try:
+            # 1. Create a temp file for cleaning
+            with tempfile.NamedTemporaryFile(suffix=".csv", delete=False) as tmp:
+                tmp_path = tmp.name
+            
+            # 2. Clean use Model.clean logic
+            if not clean_csv(path, tmp_path):
+                self.status_label.setText("Error cleaning CSV.")
+                self.show_spinner(False)
+                return
+
+            # 3. Load cleaned data
+            df = pd.read_csv(tmp_path)
+            if 'text' not in df.columns:
+                self.status_label.setText("CSV missing 'text' column after cleaning.")
+                self.show_spinner(False)
+                return
+
+            # 4. Predict in batch
+            if not self.model or not self.vectorizer:
+                self.status_label.setText("Model not loaded.")
+                self.show_spinner(False)
+                return
+
+            texts = df['text'].astype(str).tolist()
+            # Batch preprocess (it expects a list)
+            preprocessed = preprocess_text(texts)
+            # Batch vectorize
+            vec = self.vectorizer.transform(preprocessed)
+            # Batch predict
+            probs = self.model.predict_proba(vec)
+            classes = self.model.classes_
+            class_map = {c: i for i, c in enumerate(classes)}
+            
+            fake_idx = class_map.get(0, 0)
+            real_idx = class_map.get(1, 1)
+            
+            results = []
             real_count = 0
             fake_count = 0
-            total = 0
-            try:
-                with open(path, "r", encoding="utf-8", errors="ignore") as f:
-                    reader = csv.DictReader(f)
-                    if "text" not in reader.fieldnames:
-                        self.status_label.setText("CSV must have a 'text' column.")
-                        return
-                    for row in reader:
-                        t = row["text"]
-                        label, _, _ = real_predict(t, self.model, self.vectorizer, self.important_keywords)
-                        total += 1
-                        if label == "Real":
-                            real_count += 1
-                        else:
-                            fake_count += 1
-                self.status_label.setText(
-                    f"CSV processed: {total} rows — Real: {real_count}, Fake: {fake_count}"
-                )
-            except Exception as e:
-                self.status_label.setText(f"Error reading CSV: {e}")
+            
+            for p in probs:
+                f_p = p[fake_idx]
+                r_p = p[real_idx]
+                label = "Real" if r_p > f_p else "Fake"
+                results.append(label)
+                if label == "Real":
+                    real_count += 1
+                else:
+                    fake_count += 1
+
+            df['prediction'] = results
+            df['real_prob'] = probs[:, real_idx]
+            df['fake_prob'] = probs[:, fake_idx]
+
+            # 5. Update UI (Bottom Left)
+            summary = (
+                f"<b>Last CSV:</b> {os.path.basename(path)}<br>"
+                f"<b>Total Rows:</b> {len(df)}<br>"
+                f"<b>Real:</b> {real_count} | <b>Fake:</b> {fake_count}"
+            )
+            self.csv_summary_label.setText(summary)
+            self.status_label.setText(f"Batch processing complete: {len(df)} rows")
+
+            # 6. Prompt to save results
+            save_path, _ = QFileDialog.getSaveFileName(
+                self, "Save Prediction Results", 
+                f"results_{os.path.basename(path)}", 
+                "CSV Files (*.csv)"
+            )
+            if save_path:
+                df.to_csv(save_path, index=False)
+                self.status_label.setText(f"Results saved to {os.path.basename(save_path)}")
+
+            # Cleanup
+            if os.path.exists(tmp_path):
+                os.remove(tmp_path)
+
+        except Exception as e:
+            self.status_label.setText(f"Batch Error: {e}")
+            import traceback
+            traceback.print_exc()
+        finally:
+            self.show_spinner(False)
 
     # ---------- SPINNER ----------
     def show_spinner(self, show):
@@ -601,41 +709,49 @@ class FakeNewsDashboard(QMainWindow):
     def apply_theme(self):
         if self.dark_mode:
             self.setStyleSheet("""
-                QWidget { background-color: #121212; color: #FFFFFF; }
-                QPlainTextEdit { background-color: #1E1E1E; color: #FFFFFF; }
-                QTextEdit { background-color: #1E1E1E; color: #FFFFFF; }
-                QPushButton { background-color: #6C5CE7; color: #FFFFFF; border-radius: 6px; padding: 6px 10px; }
-                QPushButton:hover { background-color: #A29BFE; }
+                QWidget { background-color: #0A0A0B; color: #FAFAFA; font-family: 'Segoe UI', Arial; }
+                QPlainTextEdit { background-color: #161618; color: #FAFAFA; border: 1px solid #333; border-radius: 8px; font-size: 14px; }
+                QTextEdit { background-color: #161618; color: #FAFAFA; border: 1px solid #333; border-radius: 8px; }
+                QPushButton { background-color: #6C5CE7; color: #FFFFFF; border-radius: 8px; padding: 10px 15px; font-weight: bold; border: none; }
+                QPushButton:hover { background-color: #8C7CFF; }
+                QPushButton:pressed { background-color: #5A4EBF; }
                 QProgressBar {
-                    background-color: #1E1E1E;
+                    background-color: #161618;
                     color: #FFFFFF;
-                    border: 1px solid #333333;
-                    border-radius: 5px;
+                    border: 2px solid #333;
+                    border-radius: 10px;
                     text-align: center;
+                    font-weight: bold;
                 }
                 QProgressBar::chunk {
-                    background-color: #2ECC71;
-                    border-radius: 5px;
+                    background-color: #00E676;
+                    border-radius: 8px;
                 }
+                QLabel { font-size: 14px; }
+                QTabWidget::pane { border: 1px solid #333; background: #0A0A0B; }
+                QTabBar::tab { background: #161618; color: #888; padding: 10px 20px; border-top-left-radius: 8px; border-top-right-radius: 8px; margin-right: 2px; }
+                QTabBar::tab:selected { background: #6C5CE7; color: white; }
             """)
         else:
             self.setStyleSheet("""
-                QWidget { background-color: #FFFFFF; color: #000000; }
-                QPlainTextEdit { background-color: #FFFFFF; color: #000000; }
-                QTextEdit { background-color: #FFFFFF; color: #000000; }
-                QPushButton { background-color: #0984E3; color: #FFFFFF; border-radius: 6px; padding: 6px 10px; }
-                QPushButton:hover { background-color: #74B9FF; }
+                QWidget { background-color: #F5F6F7; color: #1A1A1A; font-family: 'Segoe UI', Arial; }
+                QPlainTextEdit { background-color: #FFFFFF; color: #1A1A1A; border: 1px solid #DDD; border-radius: 8px; font-size: 14px; }
+                QTextEdit { background-color: #FFFFFF; color: #1A1A1A; border: 1px solid #DDD; border-radius: 8px; }
+                QPushButton { background-color: #0984E3; color: #FFFFFF; border-radius: 8px; padding: 10px 15px; font-weight: bold; border: none; }
+                QPushButton:hover { background-color: #29AAFF; }
                 QProgressBar {
-                    background-color: #F0F0F0;
+                    background-color: #E0E0E0;
                     color: #000000;
-                    border: 1px solid #CCCCCC;
-                    border-radius: 5px;
+                    border: 1px solid #CCC;
+                    border-radius: 10px;
                     text-align: center;
+                    font-weight: bold;
                 }
                 QProgressBar::chunk {
-                    background-color: #27AE60;
-                    border-radius: 5px;
+                    background-color: #2E7D32;
+                    border-radius: 10px;
                 }
+                QLabel { font-size: 14px; }
             """)
 
 

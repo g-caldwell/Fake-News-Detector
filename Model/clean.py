@@ -37,8 +37,41 @@ def clean(text):
     
     return text
 
-if __name__ == "__main__":
-    df = pd.read_csv(input_path)
+
+def clean_csv(path_in, path_out):
+    """Cleans a CSV file using the clean function on the 'text' column."""
+    if not os.path.exists(path_in):
+        print(f"Error: {path_in} does not exist.")
+        return False
+        
+    df = pd.read_csv(path_in)
+    if 'text' not in df.columns:
+        print(f"Error: 'text' column not found in {path_in}.")
+        return False
+        
     df['text'] = df['text'].apply(clean)
-    df.to_csv(output_path, index=False)
-    print(f"CSV saved to: {output_path}")
+    
+    # Ensure output directory exists
+    os.makedirs(os.path.dirname(path_out), exist_ok=True)
+    
+    df.to_csv(path_out, index=False)
+    print(f"CSV saved to: {path_out}")
+    return True
+
+
+if __name__ == "__main__":
+    if not os.path.exists(input_dir):
+        print(f"Directory not found: {input_dir}")
+        exit()
+        
+    os.makedirs(output_dir, exist_ok=True)
+    
+    # Process all CSVs in Raw Datasets
+    for filename in os.listdir(input_dir):
+        if filename.endswith(".csv"):
+            in_path = os.path.join(input_dir, filename)
+            out_file = "dataset.csv" if filename == "News.csv" else f"dataset_{filename.replace('News_', '')}"
+            out_path = os.path.join(output_dir, out_file)
+            
+            print(f"Cleaning {filename}...")
+            clean_csv(in_path, out_path)

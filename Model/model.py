@@ -9,9 +9,19 @@ from sklearn.metrics import accuracy_score
 from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.tree import DecisionTreeClassifier
 
+import sys
+
+def resource_path(relative_path):
+    """ Get absolute path to resource, works for dev and for PyInstaller """
+    try:
+        base_path = sys._MEIPASS
+    except Exception:
+        base_path = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
+    return os.path.normpath(os.path.join(base_path, relative_path))
+
 # File path
-BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-SAVED_MODELS_DIR = os.path.join(BASE_DIR, 'Saved Models')
+# When bundled, we look in the root of the bundle for 'Model/Saved Models'
+SAVED_MODELS_DIR = resource_path(os.path.join('Model', 'Saved Models'))
 MODEL_PATH = os.path.join(SAVED_MODELS_DIR, 'fake_news_model.joblib')
 VECTORIZER_PATH = os.path.join(SAVED_MODELS_DIR, 'tfidf_vectorizer.joblib')
 
